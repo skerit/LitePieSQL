@@ -28,12 +28,16 @@ import re
 import time
 
 class Database:
-
+    
+    type = ""
+    
     def __init__(self, dbtype, db, host="none", port=0, login="none", passwrd="none"):
         """
             dbtype: sqlite, oracle
         """
         
+        self.type = dbtype
+
         if dbtype == "sqlite":
             import sqlite3
             self.conn = sqlite3.connect(db)
@@ -58,9 +62,14 @@ class Database:
         
         tablelist = ""
         valueholder = ""
+        valuenr = 0
         valuelist = []
+        valuedict = []
         
         for key, value in data.items():
+            
+            valuenr += 1
+            
             if len(tablelist) > 0:
                 tablelist += ', '
                 valueholder += ', '
@@ -69,21 +78,35 @@ class Database:
             tablelist += key
             
             # Add a holder
-            valueholder += '?'
+            if(self.type == "oracle"):
+                valueholder += ':' + str(valuenr)
+            else:
+                valueholder += '?'
             
             # Look for the increment() function
             increment = re.match("^increment\((\-?\d+)\)$",str(value))
 
-            if(str(value).lower() == 'null'):
-                valuelist.append(None)
-            elif(str(value).lower() == 'now()'):
-                valuelist.append(str(int(time.time())))
+            if(self.type == "oracle"):
+                if(str(value).lower() == 'null'):
+                    valuelist[str(valuenr)] = None
+                elif(str(value).lower() == 'now()'):
+                    valuelist[str(valuenr)] = str(int(time.time()))
+                else:
+                    valuelist[str(valuenr)] = value
             else:
-                valuelist.append(value)
+                if(str(value).lower() == 'null'):
+                    valuelist.append(None)
+                elif(str(value).lower() == 'now()'):
+                    valuelist.append(str(int(time.time())))
+                else:
+                    valuelist.append(value)
                 
         
         # Perform and commit the insert
-        self.query("INSERT INTO " + tablename + " (" + tablelist + ") VALUES (" + valueholder + ");", valuelist)
+        if(self.type == "oracle"):
+            self.query("INSERT INTO " + tablename + " (" + tablelist + ") VALUES (" + valueholder + ");", valuedict)
+        else:
+            self.query("INSERT INTO " + tablename + " (" + tablelist + ") VALUES (" + valueholder + ");", valuelist)
         
         # Get the last inserted id
         id = self.query('SELECT last_insert_rowid();')[0]['last_insert_rowid()']
