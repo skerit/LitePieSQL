@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Name: Database.singleton.php
+Name: litepiesql.py
 File Description: SQLite Wrapper for Python providing easy access to basic functions.
 Author: Jelle De Loecker (skerit)
 Inspired by: ricocheting's MySQL Wrapper for PHP
@@ -23,16 +23,29 @@ Copyright 2011 kipdola.com
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import sqlite3
 import itertools
 import re
 import time
 
 class Database:
 
-    def __init__(self, dbfile):
-        self.conn = sqlite3.connect(dbfile)
-        self.conn.row_factory = sqlite3.Row
+    def __init__(self, dbtype, db, host="none", port=0, login="none", passwrd="none"):
+        """
+            dbtype: sqlite, oracle
+        """
+        
+        if dbtype == "sqlite":
+            import sqlite3
+            self.conn = sqlite3.connect(db)
+            self.conn.row_factory = sqlite3.Row
+        elif dbtype == "oracle":
+            try:
+                import cx_Oracle
+            except ImportError:
+                print "Error importing oracle"
+
+            dsn = cx_Oracle.makedsn(host, port, db)
+            self.conn = cx_Oracle.connect(login, passwrd, dsn) 
         
     def insert(self, tablename, data):
         """
